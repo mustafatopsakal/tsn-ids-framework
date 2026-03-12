@@ -172,3 +172,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Project-specific
+output/*.txt
+data/processed/*.csv
+.spyderproject
+.spyproject/

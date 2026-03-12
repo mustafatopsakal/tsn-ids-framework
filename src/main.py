@@ -1,92 +1,202 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Apr  9 16:17:40 2024
+TSN-LDoS Intrusion Detection Framework — Unified Entry Point
 
-@author: Mustafa Topsakal
+Modes
+-----
+generate : Convert raw OMNeT++ traces (.txt) to labeled CSVs.
+classify : Run ML classification on existing labeled CSVs.
+full     : generate + classify in sequence.
+
+Augmentation options (for classify / full modes)
+------------------------------------------------
+none   : No augmentation, standard KFold (default).
+tsmote : tSMOTE oversampling + StratifiedKFold.
+tsaug  : tsaug augmentation + StratifiedKFold.
+
+Usage examples
+--------------
+    python main.py --mode classify --augmentation none
+    python main.py --mode classify --augmentation tsmote
+    python main.py --mode generate
+    python main.py --mode full --augmentation tsaug
 """
 
-import classification, data_handling
+import argparse
+import os
+import time
+
 import numpy as np
-import os, time
 
-fe_start_index = data_handling.fe_start_index
+import classification
+import data_handling
+import trace_parser
 
-#Definition input-output folder and result file
-normal_scenario_path = "../tsn_dataset/raw_dataset/normal_scenario/"
-attack_scenarios_path = "../tsn_dataset/raw_dataset/attack_scenarios/"
-ml_ds_path = "../tsn_dataset/ml_dataset/"
-results_path = "../output/results.txt"
 
-start_time = time.perf_counter()
+# ── Paths (relative to src/) ────────────────────────────────────────────────
 
-#Take full path non_attack scenario
-ns_file = os.listdir(os.path.abspath(normal_scenario_path))[0];
+RAW_TRACES_DIR = "../data/raw_traces"
+RAW_CSV_DIR = "../data/raw_csv"
+PROCESSED_DIR = "../data/processed"
+OUTPUT_DIR = "../output"
 
-if ns_file:
-    ns_full_path = os.path.join(os.path.abspath(normal_scenario_path), ns_file)
-else:
-    print("No file found in the directory.")
+RESULTS_FILES = {
+    "none": "plain_results.txt",
+    "tsmote": "tsmote_results.txt",
+    "tsaug": "tsaug_results.txt",
+}
 
-#Read non_attack scenario, apply data proccessing and feature extraction
-print("Non-attack scenario is being created...")
-dataNormal, labelsNormal, normal_count_zeros, normal_count_ones = data_handling.data_processing(ns_full_path)        
-dataNormal = data_handling.feature_extraction(dataNormal)
-labelsNormal = labelsNormal[fe_start_index:]
-print(f"Number of Zeros:{normal_count_zeros} - Number Of Ones:{normal_count_ones} - Total Number:{normal_count_zeros + normal_count_ones}")
 
-#After applying feature extraction add the data to the ML_dataset folder  
-data_handling.write_output(dataNormal, labelsNormal, os.path.join(ml_ds_path, ns_file))
+# ── Helper ──────────────────────────────────────────────────────────────────
 
-#Write information about normal scenario to file
-with open(os.path.abspath(results_path), "a+", encoding='utf-8') as result_file:
-    result_file.write(ns_file + "\n")
-    result_file.write(f"Number of Zeros:{normal_count_zeros} - Number Of Ones:{normal_count_ones} - Total Number:{normal_count_zeros + normal_count_ones}\n")
-    result_file.write("---------------------------------------\n")
+def _results_path(augmentation):
+    return os.path.join(
+        os.path.abspath(OUTPUT_DIR), RESULTS_FILES[augmentation]
+    )
 
-#Run all scenarios with all ML algorithms
-for attack_sce in os.listdir(os.path.abspath(attack_scenarios_path)):
-    
-    print(f"\nAttack dataset is being created for: {attack_sce}")
-    attack_sce_path = os.path.join(os.path.abspath(attack_scenarios_path), attack_sce)
 
-    dataAttack, labelsAttack, attack_count_zeros, attack_count_ones = data_handling.data_processing(attack_sce_path)
-    dataAttack = data_handling.feature_extraction(dataAttack)
-    labelsAttack = labelsAttack[fe_start_index:]
-    
-    print(f"Number of Zeros:{attack_count_zeros} - Number Of Ones:{attack_count_ones} - Total Number:{attack_count_zeros + attack_count_ones}")
+def _write_line(path, text):
+    with open(path, "a+", encoding="utf-8") as f:
+        f.write(text)
 
-    #After applying feature extraction add the data to the ML_dataset folder  
-    data_handling.write_output(dataAttack, labelsAttack, os.path.join(ml_ds_path, attack_sce))
 
-    #Write information about attack scenario to file
-    with open(os.path.abspath(results_path), "a+", encoding='utf-8') as result_file:
-        result_file.write("\n" + attack_sce + "\n")
-        result_file.write(f"Number of Zeros:{attack_count_zeros} - Number Of Ones:{attack_count_ones} - Total Number:{attack_count_zeros + attack_count_ones}")
-        result_file.write("\n---------------------------------------\n")
+# ── Mode: generate ──────────────────────────────────────────────────────────
 
-    #Include normal scenario
-    #all_data = dataNormal + dataAttack
-    #all_labels = labelsNormal + labelsAttack
-    
-    #Considering the data imbalance: If only attack scenario will be used
-    all_data = dataAttack
-    all_labels = labelsAttack
-    
-    all_data = np.array(all_data)
-    all_labels = np.array(all_labels)
-        
-    for classifier_index in range(len(classification.ml_methods)):
-        model_name = classification.ml_methods[classifier_index][0]
-        print(f"\nTraining and testing process is starting with {model_name} in {attack_sce}")
-        with open(os.path.abspath(results_path), "a+", encoding='utf-8') as output_file:
-            output_file.write(attack_sce + "\n")
-            output_file.write(classification.classify(all_data, all_labels, classifier_index))
-            output_file.write("---------------------------------------\n")
-            print(f"Results have been written to the file {results_path}")
-     
-end_time = time.perf_counter()
-elapsed_time = end_time - start_time
-hours, rem = divmod(elapsed_time, 3600)
-minutes, seconds = divmod(rem, 60)
+def run_generate():
+    """Parse raw OMNeT++ traces and write labeled CSVs to raw_csv/."""
+    print("=" * 60)
+    print("MODE: generate — Converting raw traces to labeled CSVs")
+    print("=" * 60)
+    trace_parser.process_trace_directory(
+        os.path.abspath(RAW_TRACES_DIR),
+        os.path.abspath(RAW_CSV_DIR),
+    )
+    print("\nTrace parsing completed.")
 
-print(f"Total time: {int(hours)} hour, {int(minutes)} minute, {seconds:.2f} second")
+
+# ── Mode: classify ──────────────────────────────────────────────────────────
+
+def run_classify(augmentation):
+    """Run ML classification on labeled CSVs."""
+    use_tsmote = augmentation == "tsmote"
+    use_tsaug = augmentation == "tsaug"
+    results_file = _results_path(augmentation)
+
+    normal_dir = os.path.join(os.path.abspath(RAW_CSV_DIR), "normal")
+    attack_dir = os.path.join(os.path.abspath(RAW_CSV_DIR), "attack")
+    processed_dir = os.path.abspath(PROCESSED_DIR)
+    os.makedirs(processed_dir, exist_ok=True)
+
+    print("=" * 60)
+    print(f"MODE: classify — augmentation={augmentation}")
+    print("=" * 60)
+
+    # ── Process normal scenario ──────────────────────────────────────────
+    ns_files = [f for f in os.listdir(normal_dir) if f.endswith(".csv")]
+    if ns_files:
+        ns_file = ns_files[0]
+        ns_path = os.path.join(normal_dir, ns_file)
+        print(f"\nProcessing normal scenario: {ns_file}")
+
+        data_n, labels_n, _, _ = data_handling.load_csv(ns_path)
+        data_n = data_handling.feature_extraction(data_n)
+        labels_n = labels_n[data_handling.FE_START_INDEX:]
+        zeros_n = labels_n.count(0)
+        ones_n = labels_n.count(1)
+        print(f"Zeros: {zeros_n}  Ones: {ones_n}  "
+              f"Total: {zeros_n + ones_n}")
+
+        data_handling.write_output(
+            data_n, labels_n, os.path.join(processed_dir, ns_file)
+        )
+
+        _write_line(results_file,
+                     f"{ns_file}\n"
+                     f"Zeros: {zeros_n}  Ones: {ones_n}  "
+                     f"Total: {zeros_n + ones_n}\n"
+                     f"{'─' * 40}\n")
+
+    # ── Process attack scenarios ─────────────────────────────────────────
+    attack_files = sorted(
+        f for f in os.listdir(attack_dir) if f.endswith(".csv")
+    )
+
+    for attack_file in attack_files:
+        attack_path = os.path.join(attack_dir, attack_file)
+        print(f"\nProcessing attack scenario: {attack_file}")
+
+        data_a, labels_a, _, _ = data_handling.load_csv(attack_path)
+        data_a = data_handling.feature_extraction(data_a)
+        labels_a = labels_a[data_handling.FE_START_INDEX:]
+        zeros_a = labels_a.count(0)
+        ones_a = labels_a.count(1)
+        print(f"Zeros: {zeros_a}  Ones: {ones_a}  "
+              f"Total: {zeros_a + ones_a}")
+
+        data_handling.write_output(
+            data_a, labels_a, os.path.join(processed_dir, attack_file)
+        )
+
+        _write_line(results_file,
+                     f"\n{attack_file}\n"
+                     f"Zeros: {zeros_a}  Ones: {ones_a}  "
+                     f"Total: {zeros_a + ones_a}\n"
+                     f"{'─' * 40}\n")
+
+        all_data = np.array(data_a)
+        all_labels = np.array(labels_a)
+
+        for idx in range(len(classification.ML_METHODS)):
+            model_name = classification.ML_METHODS[idx][0]
+            print(f"\n  Training {model_name} on {attack_file}")
+
+            result_text = classification.classify(
+                all_data, all_labels, idx, use_tsmote, use_tsaug,
+            )
+
+            _write_line(results_file,
+                         f"{attack_file}\n{result_text}"
+                         f"{'─' * 40}\n")
+            print(f"  Results written to {results_file}")
+
+
+# ── CLI ─────────────────────────────────────────────────────────────────────
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="TSN-LDoS Intrusion Detection Framework",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["generate", "classify", "full"],
+        default="classify",
+        help="Operation mode (default: classify)",
+    )
+    parser.add_argument(
+        "--augmentation",
+        choices=["none", "tsmote", "tsaug"],
+        default="none",
+        help="Augmentation strategy for classification (default: none)",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    start_time = time.perf_counter()
+
+    if args.mode in ("generate", "full"):
+        run_generate()
+
+    if args.mode in ("classify", "full"):
+        run_classify(args.augmentation)
+
+    elapsed = time.perf_counter() - start_time
+    hours, rem = divmod(elapsed, 3600)
+    minutes, seconds = divmod(rem, 60)
+    print(f"\nTotal time: {int(hours)}h {int(minutes)}m {seconds:.2f}s")
+
+
+if __name__ == "__main__":
+    main()
