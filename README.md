@@ -153,10 +153,19 @@ All models are evaluated using **5-fold cross-validation** with **StandardScaler
 
 If you use this repository or the accompanying dataset in academic work, please cite:
 
-**Topsakal, M., Cevher, S., & Ergenç, D.**
-A Machine Learning-Based Intrusion Detection Framework with Labeled Dataset Generation for IEEE 802.1 Time-Sensitive Networking.
-*Journal of Systems Architecture*, 2025.
-https://doi.org/10.1016/j.sysarc.2025.103408
+```bibtex
+@article{topsakal2025machine,
+  author    = {Topsakal, Mustafa and Cevher, Sel{\c{c}}uk and Ergen{\c{c}}, Do{\u{g}}analp},
+  title     = {{A Machine Learning-based Intrusion Detection Framework with Labeled Dataset Generation for IEEE 802.1 Time-Sensitive Networking}},
+  journal   = {Journal of Systems Architecture},
+  volume    = {164},
+  pages     = {103408},
+  year      = {2025},
+  month     = jul,
+  publisher = {Elsevier},
+  doi       = {10.1016/j.sysarc.2025.103408}
+}
+```
 
 A ready-to-use citation file is provided in `CITATION.cff`.
 
