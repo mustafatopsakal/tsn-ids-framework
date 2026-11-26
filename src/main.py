@@ -14,12 +14,12 @@ none   : No augmentation, standard KFold (default).
 tsmote : tSMOTE oversampling + StratifiedKFold.
 tsaug  : tsaug augmentation + StratifiedKFold.
 
-Usage examples
---------------
-    python main.py --mode classify --augmentation none
-    python main.py --mode classify --augmentation tsmote
-    python main.py --mode generate
-    python main.py --mode full --augmentation tsaug
+Usage examples (from the repository root; any directory works)
+--------------------------------------------------------------
+    python src/main.py --mode classify --augmentation none
+    python src/main.py --mode classify --augmentation tsmote
+    python src/main.py --mode generate
+    python src/main.py --mode full --augmentation tsaug
 """
 
 import argparse
@@ -31,27 +31,32 @@ import numpy as np
 import classification
 import data_handling
 import trace_parser
+from utils import natural_key
 
 
-# ── Paths (relative to src/) ────────────────────────────────────────────────
+# ── Paths (built from the repository root) ──────────────────────────────────
 
-RAW_TRACES_DIR = "../data/raw_traces"
-RAW_CSV_DIR = "../data/raw_csv"
-PROCESSED_DIR = "../data/processed"
-OUTPUT_DIR = "../output"
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAW_TRACES_DIR = os.path.join(REPO_ROOT, "data", "raw_traces")
+RAW_CSV_DIR = os.path.join(REPO_ROOT, "data", "raw_csv")
+PROCESSED_DIR = os.path.join(REPO_ROOT, "data", "processed")
+OUTPUT_DIR = os.path.join(REPO_ROOT, "output")
 
 RESULTS_FILES = {
-    "none": "plain_results.txt",
-    "tsmote": "tsmote_results.txt",
-    "tsaug": "tsaug_results.txt",
+    "none": "plain_results",
+    "tsmote": "tsmote_results",
+    "tsaug": "tsaug_results",
 }
+
+# Each run writes to its own file, so repeated runs never mix
+RUN_STAMP = time.strftime("%Y%m%d_%H%M%S")
 
 
 # ── Helper ──────────────────────────────────────────────────────────────────
 
 def _results_path(augmentation):
     return os.path.join(
-        os.path.abspath(OUTPUT_DIR), RESULTS_FILES[augmentation]
+        OUTPUT_DIR, f"{RESULTS_FILES[augmentation]}_{RUN_STAMP}.txt"
     )
 
 
@@ -67,10 +72,7 @@ def run_generate():
     print("=" * 60)
     print("MODE: generate — Converting raw traces to labeled CSVs")
     print("=" * 60)
-    trace_parser.process_trace_directory(
-        os.path.abspath(RAW_TRACES_DIR),
-        os.path.abspath(RAW_CSV_DIR),
-    )
+    trace_parser.process_trace_directory(RAW_TRACES_DIR, RAW_CSV_DIR)
     print("\nTrace parsing completed.")
 
 
@@ -82,17 +84,21 @@ def run_classify(augmentation):
     use_tsaug = augmentation == "tsaug"
     results_file = _results_path(augmentation)
 
-    normal_dir = os.path.join(os.path.abspath(RAW_CSV_DIR), "normal")
-    attack_dir = os.path.join(os.path.abspath(RAW_CSV_DIR), "attack")
-    processed_dir = os.path.abspath(PROCESSED_DIR)
+    normal_dir = os.path.join(RAW_CSV_DIR, "normal")
+    attack_dir = os.path.join(RAW_CSV_DIR, "attack")
+    processed_dir = PROCESSED_DIR
     os.makedirs(processed_dir, exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     print("=" * 60)
     print(f"MODE: classify — augmentation={augmentation}")
     print("=" * 60)
 
     # ── Process normal scenario ──────────────────────────────────────────
-    ns_files = [f for f in os.listdir(normal_dir) if f.endswith(".csv")]
+    ns_files = sorted(
+        (f for f in os.listdir(normal_dir) if f.endswith(".csv")),
+        key=natural_key,
+    )
     if ns_files:
         ns_file = ns_files[0]
         ns_path = os.path.join(normal_dir, ns_file)
@@ -118,7 +124,8 @@ def run_classify(augmentation):
 
     # ── Process attack scenarios ─────────────────────────────────────────
     attack_files = sorted(
-        f for f in os.listdir(attack_dir) if f.endswith(".csv")
+        (f for f in os.listdir(attack_dir) if f.endswith(".csv")),
+        key=natural_key,
     )
 
     for attack_file in attack_files:

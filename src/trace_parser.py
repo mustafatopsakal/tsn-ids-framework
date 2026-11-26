@@ -13,6 +13,8 @@ and assigns labels based on manipulated stream IDs encoded in the filename.
 import os
 import re
 
+from utils import natural_key
+
 
 def parse_manipulated_streams(filename):
     """Extract manipulated stream IDs from an attack scenario filename.
@@ -104,7 +106,7 @@ def process_trace_directory(trace_dir, output_dir):
     attack_dir = os.path.join(trace_dir, "attack")
 
     if os.path.isdir(normal_dir):
-        for fname in os.listdir(normal_dir):
+        for fname in sorted(os.listdir(normal_dir), key=natural_key):
             if not fname.endswith(".txt"):
                 continue
             print(f"Parsing normal trace: {fname}")
@@ -115,7 +117,7 @@ def process_trace_directory(trace_dir, output_dir):
             print(f"  Zeros: {zeros}  Ones: {ones}  Total: {zeros + ones}")
 
     if os.path.isdir(attack_dir):
-        for fname in sorted(os.listdir(attack_dir)):
+        for fname in sorted(os.listdir(attack_dir), key=natural_key):
             if not fname.endswith(".txt"):
                 continue
             streams = parse_manipulated_streams(fname)

@@ -4,6 +4,8 @@ Utility functions for converting node identifiers and MAC addresses
 to their numeric representations in the TSN in-vehicle network topology.
 """
 
+import re
+
 
 NODE_MAP = {
     "Cam1": 1,
@@ -35,3 +37,8 @@ def node_to_decimal(name):
         if key in name:
             return value
     raise ValueError(f"Unknown node name: {name}")
+
+
+def natural_key(name):
+    """Sort key for natural order of file names (as1, as2, ..., as10)."""
+    return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", name)]

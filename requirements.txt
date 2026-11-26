@@ -1,9 +1,8 @@
-numpy
-pandas
-scikit-learn
-xgboost
-lightgbm
-imbalanced-learn
-tsaug
-matplotlib
-scipy
+numpy==1.26.4
+pandas==2.3.3
+scikit-learn==1.4.2
+xgboost==2.0.3
+lightgbm==4.3.0
+tsaug==0.2.1
+matplotlib==3.10.9
+scipy==1.15.3

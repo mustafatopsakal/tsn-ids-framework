@@ -30,10 +30,10 @@ tsn-ids-framework/
 │   │   └── attack/
 │   └── processed/           # ML-ready datasets (11 features + label)
 │
-├── output/                  # Classification results
-│   ├── plain_results.txt
-│   ├── tsmote_results.txt
-│   └── tsaug_results.txt
+├── output/                  # Classification results, one file per run
+│   ├── plain_results_<date_time>.txt
+│   ├── tsmote_results_<date_time>.txt
+│   └── tsaug_results_<date_time>.txt
 │
 ├── requirements.txt
 ├── CITATION.cff
@@ -43,49 +43,49 @@ tsn-ids-framework/
 
 ## Installation
 
-Requires Python 3.7+.
+Requires Python 3.10–3.12 (tested with Python 3.10).
 
 ```bash
 pip install -r requirements.txt
 ```
 
+The package versions are pinned to those tested against the published paper version ([ktu-tsn/tsn-ldos-ids](https://github.com/ktu-tsn/tsn-ldos-ids)); newer XGBoost and LightGBM releases give slightly different results in the `none` mode.
+
 ## Usage
 
-All commands are run from the `src/` directory:
-
-```bash
-cd src
-```
+The commands below are run from the repository root. Paths are resolved from the location of `main.py`, so the script can also be started from any other directory.
 
 ### Classify with existing CSV data (no augmentation)
 
 ```bash
-python main.py --mode classify --augmentation none
+python src/main.py --mode classify --augmentation none
 ```
 
 ### Classify with tSMOTE augmentation
 
 ```bash
-python main.py --mode classify --augmentation tsmote
+python src/main.py --mode classify --augmentation tsmote
 ```
 
 ### Classify with tsaug augmentation
 
 ```bash
-python main.py --mode classify --augmentation tsaug
+python src/main.py --mode classify --augmentation tsaug
 ```
 
 ### Generate CSV datasets from raw OMNeT++ traces
 
 ```bash
-python main.py --mode generate
+python src/main.py --mode generate
 ```
 
 ### Full pipeline (generate + classify)
 
 ```bash
-python main.py --mode full --augmentation tsmote
+python src/main.py --mode full --augmentation tsmote
 ```
+
+Each run writes its results to a new file in `output/` (for example `plain_results_20261126_143000.txt`); earlier results are never appended to or overwritten.
 
 ## ML Models
 

@@ -69,7 +69,8 @@ def feature_extraction(data):
 
     for i in range(FE_START_INDEX, len(data)):
         timestamp = data[i][0]
-        last_remote_timestamp = float(timestamp) - float(data[i - 1][0])
+        # Rounded to 12 decimals, as in the published (paper) version
+        last_remote_timestamp = round(float(timestamp) - float(data[i - 1][0]), 12)
         stream_id = data[i][1]
         prev_stream_id = data[i - 1][1]
         prev_prev_stream_id = data[i - 2][1]
@@ -95,4 +96,7 @@ def write_output(data, labels, output_file):
     """Write feature data and labels to a CSV file."""
     with open(output_file, "w+") as f:
         for i in range(len(data)):
-            f.write(",".join(map(str, data[i] + [labels[i]])) + "\n")
+            row = list(data[i])
+            # inter-arrival time with 12 fixed decimals, as in the published dataset
+            row[1] = "{:.12f}".format(row[1])
+            f.write(",".join(map(str, row + [labels[i]])) + "\n")
